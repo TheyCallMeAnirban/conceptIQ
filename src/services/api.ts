@@ -153,7 +153,78 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  // --- Universal Tutor Chat / Doubts ---
+  // --- Progressive Streaming Tutor Chat via SSE ---
+  streamTutor: (
+    payload: {
+      learner_id: string;
+      message: string;
+      mode?: 'DOUBT' | 'EXPLAIN' | 'TEACH' | 'ANALYZE';
+      subject_id?: string;
+      concept_id?: string;
+    },
+    callbacks: {
+      onStart?: (data: { request_id: string; mode: string }) => void;
+      onChunk: (chunk: string) => void;
+      onComplete?: (data: { provider: string }) => void;
+      onError?: (err: any) => void;
+    },
+    signal?: AbortSignal
+  ) => {
+    const url = `${API_BASE_URL}/tutor/stream`;
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Streaming failed: HTTP ${response.status}`);
+        }
+        if (!response.body) {
+          throw new Error('ReadableStream not supported by browser/environment');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              const jsonStr = trimmed.slice(5).trim();
+              try {
+                const event = JSON.parse(jsonStr);
+                if (event.type === 'start' && callbacks.onStart) {
+                  callbacks.onStart(event);
+                } else if (event.type === 'content' && event.chunk) {
+                  callbacks.onChunk(event.chunk);
+                } else if (event.type === 'complete' && callbacks.onComplete) {
+                  callbacks.onComplete(event);
+                }
+              } catch (e) {
+                // Incomplete JSON line in chunk
+              }
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        if (signal?.aborted) return;
+        if (callbacks.onError) callbacks.onError(err);
+      });
+  },
+
+  // --- Universal Tutor Chat / Doubts (Non-streaming fallback) ---
   queryTutor: (payload: {
     learner_id: string;
     message: string;

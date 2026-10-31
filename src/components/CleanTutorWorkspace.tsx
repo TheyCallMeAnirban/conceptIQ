@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { JarvisRadialHud } from './JarvisRadialHud';
-import { Send, Sparkles, BookOpen, Layers, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { JarvisNeuralCore, IntelligenceState } from './JarvisNeuralCore';
+import { EducationalRenderer } from './EducationalRenderer';
+import { Send, Square, BookOpen, Layers, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface CleanTutorWorkspaceProps {
-  hudStatus: 'IDLE' | 'THINKING' | 'RESPONDING' | 'ASSESSING';
+  intelligenceState: IntelligenceState;
   mode: 'learn' | 'ask' | 'practice';
   activeConceptName?: string;
   conceptsList: Array<{ id: string; name: string; prerequisites: string[] }>;
@@ -14,14 +15,15 @@ interface CleanTutorWorkspaceProps {
   onPracticeSubmit?: (answer: string, reasoning: string) => void;
   isSubmittingPractice?: boolean;
   latestDiagnosis?: any;
-  // Tutor interaction
+  // Streaming Tutor interaction
   conversationHistory: Array<{ role: 'user' | 'assistant'; text: string; provider?: string }>;
   onSendMessage: (msg: string) => void;
   isLoading: boolean;
+  onStopGeneration?: () => void;
 }
 
 export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
-  hudStatus,
+  intelligenceState,
   mode,
   activeConceptName,
   conceptsList,
@@ -34,6 +36,7 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
   conversationHistory,
   onSendMessage,
   isLoading,
+  onStopGeneration,
 }) => {
   const [inputVal, setInputVal] = useState<string>('');
   const [practiceReasoning, setPracticeReasoning] = useState<string>('');
@@ -85,27 +88,21 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
         </div>
       </aside>
 
-      {/* CENTER: Main Tutor Conversation & Explanation Area (Majority of Screen) */}
+      {/* CENTER: Main Tutor Conversation & Structured Educational Document */}
       <main className="lg:col-span-6 bg-[#0B0E11]/90 border border-[#1A2228] p-4 flex flex-col overflow-hidden backdrop-blur-md">
-        {/* Tutor Header with Small Radial Intelligence Indicator */}
+        {/* Tutor Header with Visual Neural Intelligence Presence */}
         <div className="flex items-center justify-between pb-3 border-b border-[#1A2228] mb-3">
-          <div className="flex items-center gap-3">
-            <JarvisRadialHud status={hudStatus} size="compact" />
-            <div className="flex flex-col">
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#F0F6FC]">
-                {mode === 'practice' ? 'Adaptive Assessment' : 'JARVIS Academic Intelligence'}
-              </span>
-              <span className="text-[11px] font-sans text-[#8EA7B5]">
-                {activeConceptName || 'Universal Knowledge Model'}
-              </span>
-            </div>
-          </div>
+          <JarvisNeuralCore
+            state={intelligenceState}
+            size="workspace-header"
+            activeTopic={activeConceptName || 'Universal Syllabus'}
+          />
           <span className="font-mono text-[10px] text-[#00D9FF] px-2 py-0.5 border border-[#1A2228] bg-[#0E1418]">
             {mode.toUpperCase()} MODE
           </span>
         </div>
 
-        {/* Central Educational Content / Practice Area */}
+        {/* Central Educational Document / Dialogue Area */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-sm font-sans">
           {/* Practice Mode Layout */}
           {mode === 'practice' && currentQuestion && (
@@ -114,11 +111,9 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
                 <span className="text-[#00D9FF] font-semibold">[{currentQuestion.question_id}] {currentQuestion.title}</span>
                 <span>Diff: {currentQuestion.difficulty}</span>
               </div>
-              <p className="text-[#E6F7FF] text-sm leading-relaxed whitespace-pre-wrap">{currentQuestion.problem_text}</p>
+              <EducationalRenderer content={currentQuestion.problem_text} />
               {currentQuestion.code_snippet && (
-                <pre className="p-3 bg-[#06080A] border border-[#1A2228] text-[#00D9FF] text-xs font-mono overflow-x-auto">
-                  {currentQuestion.code_snippet}
-                </pre>
+                <EducationalRenderer content={`\`\`\`c\n${currentQuestion.code_snippet}\n\`\`\``} />
               )}
               {currentQuestion.options && (
                 <div className="space-y-2 pt-2">
@@ -145,7 +140,7 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
                   type="text"
                   value={practiceReasoning}
                   onChange={(e) => setPracticeReasoning(e.target.value)}
-                  placeholder="Explain your reasoning (tested by Gemini AI)..."
+                  placeholder="Explain your reasoning (verified by Gemini AI)..."
                   className="w-full bg-[#080B0D] border border-[#1A2228] p-2 text-xs text-[#E6F7FF] placeholder-[#4D6270] focus:border-[#00D9FF] focus:outline-none font-mono"
                 />
               </div>
@@ -162,66 +157,81 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
               {latestDiagnosis && (
                 <div className="p-3 bg-[#0A0E11] border border-[#1E2830] text-xs font-mono text-[#8EA7B5] space-y-1">
                   <div className="text-[#00D9FF] font-semibold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
                     <span>DIAGNOSIS ({latestDiagnosis.reasoning_quality})</span>
                   </div>
-                  <p className="text-[#CBE7F5] font-sans text-xs">{latestDiagnosis.explanation}</p>
+                  <EducationalRenderer content={latestDiagnosis.explanation} />
                 </div>
               )}
             </div>
           )}
 
-          {/* Conversation & Explanations */}
+          {/* Educational Explanations / Dialogue History with Progressive Markdown & KaTeX */}
           {conversationHistory.length === 0 && mode !== 'practice' && (
-            <div className="h-full flex flex-col items-center justify-center text-center text-[#4E6370] py-12">
-              <Sparkles className="w-8 h-8 text-[#00D9FF]/40 mb-3" />
-              <p className="text-sm font-sans text-[#7F95A3]">Ready for inquiry.</p>
-              <p className="text-xs font-mono mt-1">Ask a question or select a topic to begin instruction.</p>
+            <div className="h-full flex flex-col items-center justify-center text-center text-[#4E6370] py-12 font-mono">
+              <span className="text-[#00D9FF] text-xs uppercase tracking-widest font-semibold">JARVIS TUTOR READY</span>
+              <p className="text-xs text-[#7F95A3] mt-1 font-sans">
+                Inquire about any topic, doubt, or problem. The response will stream progressively with formatted derivations and examples.
+              </p>
             </div>
           )}
 
-          {conversationHistory.map((msg, i) => (
-            <div
-              key={i}
-              className={`p-3.5 border text-xs sm:text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-[#10151A] border-[#1E2830] text-[#E6F7FF] ml-6'
-                  : 'bg-[#080B0D] border-[#161D22] text-[#CBE7F5] mr-6'
-              }`}
-            >
-              <div className="flex items-center justify-between text-[10px] font-mono text-[#4E6370] mb-1.5">
-                <span>{msg.role === 'user' ? 'LEARNER QUERY' : 'JARVIS TUTOR'}</span>
-                {msg.provider && <span className="text-[#00D9FF]">MODEL: {msg.provider}</span>}
+          {conversationHistory.map((msg, i) => {
+            const isLastMessage = i === conversationHistory.length - 1;
+            const isCurrentlyStreaming = isLastMessage && isLoading && msg.role === 'assistant';
+
+            return (
+              <div
+                key={i}
+                className={`p-4 border text-xs sm:text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-[#10151A] border-[#1E2830] text-[#E6F7FF] ml-6'
+                    : 'bg-[#090C0E] border-[#161D22] text-[#CBE7F5] mr-4'
+                }`}
+              >
+                <div className="flex items-center justify-between text-[10px] font-mono text-[#4E6370] mb-2 border-b border-[#141B20] pb-1">
+                  <span className="uppercase tracking-wider font-semibold">
+                    {msg.role === 'user' ? 'STUDENT INQUIRY' : 'JARVIS PEDAGOGICAL BREAKDOWN'}
+                  </span>
+                  {msg.provider && <span className="text-[#00D9FF]">ENGINE: {msg.provider}</span>}
+                </div>
+                <EducationalRenderer
+                  content={msg.text}
+                  isStreaming={isCurrentlyStreaming}
+                />
               </div>
-              <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="p-3 bg-[#080B0D] border border-[#161D22] text-xs font-mono text-[#00D9FF] flex items-center gap-2 mr-6 animate-pulse">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>JARVIS synthesizing rigorous pedagogical breakdown...</span>
-            </div>
-          )}
+            );
+          })}
         </div>
 
-        {/* Input Composer */}
+        {/* Input Composer with Stop Control */}
         <form onSubmit={handleSubmit} className="mt-3 flex gap-2 pt-2 border-t border-[#1A2228]">
           <input
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             placeholder="Ask a question or explore a doubt..."
+            disabled={isLoading}
             className="flex-1 bg-[#090C0E] border border-[#1A2228] px-3 py-2 text-xs text-[#E6F7FF] placeholder-[#4D6270] focus:border-[#00D9FF] focus:outline-none font-sans"
           />
-          <button
-            type="submit"
-            disabled={isLoading || !inputVal.trim()}
-            className="px-3.5 py-2 bg-[#00D9FF]/20 border border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/30 disabled:opacity-40 text-xs font-mono font-semibold uppercase flex items-center gap-1.5 transition-colors"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send</span>
-          </button>
+          {isLoading && onStopGeneration ? (
+            <button
+              type="button"
+              onClick={onStopGeneration}
+              className="px-3.5 py-2 bg-[#EF4444]/20 border border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444]/30 text-xs font-mono font-semibold uppercase flex items-center gap-1.5 transition-colors"
+            >
+              <Square className="w-3.5 h-3.5" />
+              <span>Stop</span>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isLoading || !inputVal.trim()}
+              className="px-3.5 py-2 bg-[#00D9FF]/20 border border-[#00D9FF] text-[#00D9FF] hover:bg-[#00D9FF]/30 disabled:opacity-40 text-xs font-mono font-semibold uppercase flex items-center gap-1.5 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Inquire</span>
+            </button>
+          )}
         </form>
       </main>
 
@@ -236,7 +246,7 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
           <div className="space-y-3 font-mono text-xs text-[#8EA7B5]">
             <div>
               <span className="text-[10px] text-[#4E6370] uppercase">Active Subject</span>
-              <p className="text-[#E6F7FF] text-xs font-sans mt-0.5">Computer Science</p>
+              <p className="text-[#E6F7FF] text-xs font-sans mt-0.5">Computer Science & STEM</p>
             </div>
             <div>
               <span className="text-[10px] text-[#4E6370] uppercase">Selected Concept</span>
@@ -249,7 +259,6 @@ export const CleanTutorWorkspace: React.FC<CleanTutorWorkspaceProps> = ({
           </div>
         </div>
 
-        {/* Quiet footer tip */}
         <div className="p-2.5 bg-[#0D1216] border border-[#161D22] text-[11px] font-mono text-[#4E6370]">
           Casual doubts do not mutate BKT. Only formal practice updates your mastery.
         </div>

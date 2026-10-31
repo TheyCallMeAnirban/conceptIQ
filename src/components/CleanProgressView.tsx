@@ -96,3 +96,4 @@ export const CleanProgressView: React.FC<CleanProgressViewProps> = ({ masteries 
     </div>
   );
 };
+

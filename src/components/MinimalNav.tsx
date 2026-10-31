@@ -72,3 +72,4 @@ export const MinimalNav: React.FC<MinimalNavProps> = ({
     </header>
   );
 };
+

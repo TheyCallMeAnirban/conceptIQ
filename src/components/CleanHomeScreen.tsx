@@ -135,3 +135,4 @@ export const CleanHomeScreen: React.FC<CleanHomeScreenProps> = ({
     </div>
   );
 };
+

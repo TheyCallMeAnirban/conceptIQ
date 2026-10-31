@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MinimalNav, DestinationTab } from './components/MinimalNav';
 import { CleanHomeScreen } from './components/CleanHomeScreen';
 import { CleanTutorWorkspace } from './components/CleanTutorWorkspace';
 import { CleanProgressView } from './components/CleanProgressView';
+import { IntelligenceState } from './components/JarvisNeuralCore';
 import { api } from './services/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<DestinationTab>('home');
   const [activeLearnerId] = useState<string>('learner_gate_01');
-  const [hudStatus, setHudStatus] = useState<'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING' | 'ASSESSING'>('IDLE');
+  const [hudStatus, setHudStatus] = useState<IntelligenceState>('IDLE');
 
   // Input states
   const [homeQuery, setHomeQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Data states from MongoDB
   const [concepts, setConcepts] = useState<Array<{ id: string; name: string; prerequisites: string[]; default_p_init: number }>>([]);
@@ -25,7 +27,7 @@ export default function App() {
   const [isSubmittingPractice, setIsSubmittingPractice] = useState<boolean>(false);
   const [latestDiagnosis, setLatestDiagnosis] = useState<any>(null);
 
-  // Tutor Dialogue Conversation
+  // Progressive Streaming Tutor Dialogue Conversation
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string; provider?: string }>>([]);
 
   // 1. Initial Load: Synchronize with MongoDB
@@ -58,38 +60,87 @@ export default function App() {
 
   const activeConcept = concepts.find((c) => c.id === selectedConceptId);
 
-  // Tutor Inquire handler (Universal AI Tutor)
-  const handleTutorInquire = async (messageText: string, targetMode: 'learn' | 'ask' | 'practice') => {
+  // Progressive Streaming Tutor Inquire handler
+  const handleTutorInquire = (messageText: string, targetMode: 'learn' | 'ask' | 'practice') => {
     if (!messageText.trim()) return;
 
-    // Switch to workspace view
+    // Switch to workspace view immediately
     setActiveTab(targetMode);
-    setConversationHistory((prev) => [...prev, { role: 'user', text: messageText }]);
+
+    // 1. Append user message & initialize assistant placeholder
+    setConversationHistory((prev) => [
+      ...prev,
+      { role: 'user', text: messageText },
+      { role: 'assistant', text: '' },
+    ]);
+
     setIsLoading(true);
     setHudStatus('THINKING');
 
-    try {
-      const modeKey = targetMode === 'learn' ? 'TEACH' : 'DOUBT';
-      const res = await api.queryTutor({
+    const abortCtrl = new AbortController();
+    abortControllerRef.current = abortCtrl;
+
+    const modeKey = targetMode === 'learn' ? 'TEACH' : 'DOUBT';
+
+    api.streamTutor(
+      {
         learner_id: activeLearnerId,
         message: messageText,
         mode: modeKey,
         concept_id: selectedConceptId,
-      });
+      },
+      {
+        onStart: (data) => {
+          setHudStatus('THINKING');
+        },
+        onChunk: (chunk) => {
+          setHudStatus('RESPONDING');
+          setConversationHistory((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant') {
+              last.text += chunk;
+            }
+            return copy;
+          });
+        },
+        onComplete: (data) => {
+          setIsLoading(false);
+          setHudStatus('IDLE');
+          setConversationHistory((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant') {
+              last.provider = data.provider;
+            }
+            return copy;
+          });
+        },
+        onError: (err) => {
+          setIsLoading(false);
+          setHudStatus('ERROR');
+          setConversationHistory((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.role === 'assistant') {
+              if (!last.text) {
+                last.text = `Tutor connection notice: ${err.message}. Retrying or operating in fallback mode.`;
+              }
+            }
+            return copy;
+          });
+          setTimeout(() => setHudStatus('IDLE'), 4000);
+        },
+      },
+      abortCtrl.signal
+    );
+  };
 
-      setConversationHistory((prev) => [
-        ...prev,
-        { role: 'assistant', text: res.reply, provider: res.provider },
-      ]);
-      setHudStatus('RESPONDING');
-    } catch (err: any) {
-      setConversationHistory((prev) => [
-        ...prev,
-        { role: 'assistant', text: `Tutor communication error: ${err.message}` },
-      ]);
-    } finally {
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
       setIsLoading(false);
-      setTimeout(() => setHudStatus('IDLE'), 3500);
+      setHudStatus('IDLE');
     }
   };
 
@@ -97,7 +148,7 @@ export default function App() {
   const handlePracticeSubmit = async (answer: string, reasoning: string) => {
     if (!sessionId || !currentQuestion) return;
     setIsSubmittingPractice(true);
-    setHudStatus('ASSESSING');
+    setHudStatus('THINKING');
 
     try {
       const res = await api.submitAttempt({
@@ -111,7 +162,6 @@ export default function App() {
       setLatestDiagnosis(res.diagnosis);
       setHudStatus('RESPONDING');
 
-      // Refresh masteries
       const updatedMasteries = await api.getLearnerMastery(activeLearnerId);
       setMasteries(updatedMasteries);
 
@@ -122,13 +172,13 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Practice submission error:', err);
+      setHudStatus('ERROR');
     } finally {
       setIsSubmittingPractice(false);
       setTimeout(() => setHudStatus('IDLE'), 3500);
     }
   };
 
-  // Build compact modules for Continue Learning list
   const recentModules = concepts.map((c) => {
     const m = masteries.find((rec) => rec.concept_id === c.id);
     return {
@@ -151,7 +201,7 @@ export default function App() {
       <div className="flex-1 flex flex-col">
         {activeTab === 'home' && (
           <CleanHomeScreen
-            status={hudStatus}
+            status={hudStatus === 'ERROR' ? 'IDLE' : hudStatus}
             query={homeQuery}
             onQueryChange={setHomeQuery}
             onSubmit={(e) => {
@@ -172,7 +222,7 @@ export default function App() {
 
         {(activeTab === 'learn' || activeTab === 'ask' || activeTab === 'practice') && (
           <CleanTutorWorkspace
-            hudStatus={hudStatus}
+            intelligenceState={hudStatus}
             mode={activeTab}
             activeConceptName={activeConcept?.name}
             conceptsList={concepts}
@@ -185,6 +235,7 @@ export default function App() {
             conversationHistory={conversationHistory}
             onSendMessage={(msg) => handleTutorInquire(msg, activeTab)}
             isLoading={isLoading}
+            onStopGeneration={handleStopGeneration}
           />
         )}
 
