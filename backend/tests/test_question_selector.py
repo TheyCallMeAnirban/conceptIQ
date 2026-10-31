@@ -62,7 +62,18 @@ def test_question_selector_prerequisite_remediation(seeded_db):
         )
         .first()
     )
-    prereq_mastery.p_mastery = 0.20
+    if not prereq_mastery:
+        prereq_mastery = ConceptMastery(
+            learner_id="learner_gate_01",
+            concept_id="DATA_TYPES_MEM_REP",
+            p_mastery=0.20,
+            p_transit=0.15,
+            p_guess=0.20,
+            p_slip=0.10,
+        )
+        seeded_db.add(prereq_mastery)
+    else:
+        prereq_mastery.p_mastery = 0.20
     seeded_db.commit()
 
     selector = QuestionSelector(seeded_db)
@@ -90,7 +101,20 @@ def test_question_selector_difficulty_escalation(seeded_db):
         )
         .first()
     )
-    root_mastery.p_mastery = 0.80
+    if not root_mastery:
+        root_mastery = ConceptMastery(
+            learner_id="learner_gate_01",
+            concept_id="DATA_TYPES_MEM_REP",
+            p_mastery=0.80,
+            p_transit=0.15,
+            p_guess=0.20,
+            p_slip=0.10,
+            next_review_due=future,
+        )
+        seeded_db.add(root_mastery)
+    else:
+        root_mastery.p_mastery = 0.80
+        root_mastery.next_review_due = future
     seeded_db.commit()
 
     selector = QuestionSelector(seeded_db)

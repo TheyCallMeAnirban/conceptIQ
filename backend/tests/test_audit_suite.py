@@ -368,7 +368,18 @@ def test_selector_never_selects_unmet_prerequisites_as_frontier(audit_db):
         ConceptMastery.learner_id == "learner_gate_01",
         ConceptMastery.concept_id == "DATA_TYPES_MEM_REP"
     ).first()
-    m.p_mastery = 0.20
+    if not m:
+        m = ConceptMastery(
+            learner_id="learner_gate_01",
+            concept_id="DATA_TYPES_MEM_REP",
+            p_mastery=0.20,
+            p_transit=0.15,
+            p_guess=0.20,
+            p_slip=0.10,
+        )
+        audit_db.add(m)
+    else:
+        m.p_mastery = 0.20
     audit_db.commit()
 
     selector = QuestionSelector(audit_db)

@@ -30,12 +30,12 @@ def test_seed_database_idempotency(in_memory_db):
     learner_count_1 = in_memory_db.query(Learner).count()
     mastery_count_1 = in_memory_db.query(ConceptMastery).count()
 
-    assert concept_count_1 == 9
-    assert prereq_count_1 == 12
-    assert q_count_1 == 22
-    assert misc_count_1 == 8
+    assert concept_count_1 == 13      # 9 C + 2 Math + 2 Physics
+    assert prereq_count_1 == 14       # 12 C + 1 Math + 1 Physics
+    assert q_count_1 == 24            # 22 C + 1 Math + 1 Physics
+    assert misc_count_1 == 10         # 8 C + 1 Math + 1 Physics
     assert learner_count_1 == 2
-    assert mastery_count_1 == 18  # 2 learners * 9 concepts
+    assert mastery_count_1 == 0       # Lazy initialization: 0 pre-flooded masteries
 
     # Second seed run (must be completely idempotent)
     seed_database(db=in_memory_db)

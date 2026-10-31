@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 from backend.app.core.database import SessionLocal, engine, Base
+from backend.app.core.migration import run_schema_upgrade
 from backend.app.models import (
+    Subject,
+    Topic,
     Concept,
     ConceptPrerequisite,
     Misconception,
@@ -10,6 +14,8 @@ from backend.app.models import (
 )
 from backend.app.domain.dag import ConceptDAGValidator
 from backend.app.seed.c_curriculum_data import (
+    SUBJECTS,
+    TOPICS,
     CONCEPTS,
     PREREQUISITES,
     MISCONCEPTIONS,
@@ -19,41 +25,71 @@ from backend.app.seed.c_curriculum_data import (
 
 def seed_database(db: Session = None) -> None:
     """
-    Idempotent seeding function.
-    Validates DAG integrity, then upserts concepts, prerequisites,
-    misconceptions, questions, and default demo learners.
+    Idempotent seeding function for the Universal Academic Curriculum.
+    Applies explicit SQLite schema upgrades first, validates multi-subject DAG integrity,
+    and upserts subjects, topics, concepts, prerequisites, misconceptions, questions,
+    and demo learners without eager mastery flooding.
     """
     close_at_end = False
     if db is None:
-        Base.metadata.create_all(bind=engine)
+        # Run explicit schema upgrade on engine
+        run_schema_upgrade(engine)
         db = SessionLocal()
         close_at_end = True
 
-    # Ensure schema is up to date (lightweight migration for SQLite)
     try:
-        with engine.begin() as conn:
-            cursor = conn.connection.cursor()
-            cursor.execute("PRAGMA table_info(questions);")
-            columns = [row[1] for row in cursor.fetchall()]
-            if columns and "secondary_concept_ids" not in columns:
-                cursor.execute("ALTER TABLE questions ADD COLUMN secondary_concept_ids JSON DEFAULT '[]';")
-            cursor.close()
-    except Exception:
-        pass
-
-    try:
-        # 1. Validate DAG before writing anything to DB
+        # 1. Validate DAG before writing anything
         concept_ids = [c["id"] for c in CONCEPTS]
         edges = [(p[0], p[1]) for p in PREREQUISITES]
-        topological_order = ConceptDAGValidator.validate_and_sort(concept_ids, edges)
-        print(f"[Seed] Curriculum DAG validated successfully. Topological order: {len(topological_order)} concepts.")
+        
+        # Build concept -> subject mapping for cross-subject boundary validation
+        topic_to_subject = {t["id"]: t["subject_id"] for t in TOPICS}
+        concept_to_subject = {c["id"]: topic_to_subject.get(c.get("topic_id")) for c in CONCEPTS}
+        
+        topological_order = ConceptDAGValidator.validate_and_sort(
+            concept_ids, edges, concept_subject_map=concept_to_subject
+        )
+        print(f"[Seed] Universal Curriculum DAG validated successfully. Topological order: {len(topological_order)} concepts.")
 
-        # 2. Seed Concepts (Upsert / Ignore existing)
+        # 2. Seed Subjects
+        for s_data in SUBJECTS:
+            existing_s = db.query(Subject).filter(Subject.id == s_data["id"]).first()
+            if not existing_s:
+                subj = Subject(
+                    id=s_data["id"],
+                    name=s_data["name"],
+                    description=s_data["description"],
+                )
+                db.add(subj)
+            else:
+                existing_s.name = s_data["name"]
+                existing_s.description = s_data["description"]
+        db.commit()
+
+        # 3. Seed Topics
+        for t_data in TOPICS:
+            existing_t = db.query(Topic).filter(Topic.id == t_data["id"]).first()
+            if not existing_t:
+                topic = Topic(
+                    id=t_data["id"],
+                    subject_id=t_data["subject_id"],
+                    name=t_data["name"],
+                    description=t_data["description"],
+                )
+                db.add(topic)
+            else:
+                existing_t.subject_id = t_data["subject_id"]
+                existing_t.name = t_data["name"]
+                existing_t.description = t_data["description"]
+        db.commit()
+
+        # 4. Seed Concepts
         for c_data in CONCEPTS:
-            existing = db.query(Concept).filter(Concept.id == c_data["id"]).first()
-            if not existing:
+            existing_c = db.query(Concept).filter(Concept.id == c_data["id"]).first()
+            if not existing_c:
                 concept = Concept(
                     id=c_data["id"],
+                    topic_id=c_data.get("topic_id"),
                     name=c_data["name"],
                     description=c_data["description"],
                     default_p_init=c_data["default_p_init"],
@@ -63,17 +99,18 @@ def seed_database(db: Session = None) -> None:
                 )
                 db.add(concept)
             else:
-                existing.name = c_data["name"]
-                existing.description = c_data["description"]
-                existing.default_p_init = c_data["default_p_init"]
-                existing.default_p_transit = c_data["default_p_transit"]
-                existing.default_p_guess = c_data["default_p_guess"]
-                existing.default_p_slip = c_data["default_p_slip"]
+                existing_c.topic_id = c_data.get("topic_id")
+                existing_c.name = c_data["name"]
+                existing_c.description = c_data["description"]
+                existing_c.default_p_init = c_data["default_p_init"]
+                existing_c.default_p_transit = c_data["default_p_transit"]
+                existing_c.default_p_guess = c_data["default_p_guess"]
+                existing_c.default_p_slip = c_data["default_p_slip"]
         db.commit()
 
-        # 3. Seed Prerequisite Edges (Idempotent)
+        # 5. Seed Prerequisites (Idempotent)
         for concept_id, prereq_id in PREREQUISITES:
-            existing = (
+            existing_p = (
                 db.query(ConceptPrerequisite)
                 .filter(
                     ConceptPrerequisite.concept_id == concept_id,
@@ -81,7 +118,7 @@ def seed_database(db: Session = None) -> None:
                 )
                 .first()
             )
-            if not existing:
+            if not existing_p:
                 edge = ConceptPrerequisite(
                     concept_id=concept_id,
                     prerequisite_id=prereq_id,
@@ -89,28 +126,35 @@ def seed_database(db: Session = None) -> None:
                 db.add(edge)
         db.commit()
 
-        # 4. Seed Misconceptions
+        # 6. Seed Misconceptions
         for m_data in MISCONCEPTIONS:
-            existing = db.query(Misconception).filter(Misconception.id == m_data["id"]).first()
-            if not existing:
+            existing_m = db.query(Misconception).filter(Misconception.id == m_data["id"]).first()
+            if not existing_m:
                 misc = Misconception(
                     id=m_data["id"],
                     concept_id=m_data["concept_id"],
                     name=m_data["name"],
                     description=m_data["description"],
                     remediation_hint=m_data["remediation_hint"],
+                    source=m_data.get("source", "CURATED"),
+                    validation_status=m_data.get("validation_status", "CONFIRMED"),
+                    confidence=m_data.get("confidence", 1.0),
+                    evidence_count=1,
                 )
                 db.add(misc)
             else:
-                existing.name = m_data["name"]
-                existing.description = m_data["description"]
-                existing.remediation_hint = m_data["remediation_hint"]
+                existing_m.name = m_data["name"]
+                existing_m.description = m_data["description"]
+                existing_m.remediation_hint = m_data["remediation_hint"]
+                existing_m.source = m_data.get("source", "CURATED")
+                existing_m.validation_status = m_data.get("validation_status", "CONFIRMED")
+                existing_m.confidence = m_data.get("confidence", 1.0)
         db.commit()
 
-        # 5. Seed Questions
+        # 7. Seed Questions
         for q_data in QUESTIONS:
-            existing = db.query(Question).filter(Question.id == q_data["id"]).first()
-            if not existing:
+            existing_q = db.query(Question).filter(Question.id == q_data["id"]).first()
+            if not existing_q:
                 q = Question(
                     id=q_data["id"],
                     concept_id=q_data["concept_id"],
@@ -127,52 +171,33 @@ def seed_database(db: Session = None) -> None:
                 )
                 db.add(q)
             else:
-                existing.title = q_data["title"]
-                existing.problem_text = q_data["problem_text"]
-                existing.code_snippet = q_data.get("code_snippet")
-                existing.options = q_data.get("options")
-                existing.correct_answer = q_data["correct_answer"]
-                existing.canonical_explanation = q_data["canonical_explanation"]
-                existing.difficulty = q_data["difficulty"]
-                existing.secondary_concept_ids = q_data.get("secondary_concept_ids", [])
-                existing.known_misconceptions = q_data.get("known_misconceptions", [])
+                existing_q.title = q_data["title"]
+                existing_q.problem_text = q_data["problem_text"]
+                existing_q.code_snippet = q_data.get("code_snippet")
+                existing_q.options = q_data.get("options")
+                existing_q.correct_answer = q_data["correct_answer"]
+                existing_q.canonical_explanation = q_data["canonical_explanation"]
+                existing_q.difficulty = q_data["difficulty"]
+                existing_q.secondary_concept_ids = q_data.get("secondary_concept_ids", [])
+                existing_q.known_misconceptions = q_data.get("known_misconceptions", [])
         db.commit()
 
-        # 6. Seed Demo Learners & Initial Masteries
+        # 8. Seed Demo Learners (WITHOUT globally initializing mastery for all concepts)
         demo_learners = [
-            {"id": "learner_gate_01", "name": "Rahul Sharma (GATE Aspirant)"},
-            {"id": "learner_gate_02", "name": "Priya Verma (GATE Aspirant)"},
+            {"id": "learner_gate_01", "name": "Rahul Sharma"},
+            {"id": "learner_gate_02", "name": "Priya Verma"},
         ]
         for l_data in demo_learners:
             learner = db.query(Learner).filter(Learner.id == l_data["id"]).first()
             if not learner:
                 learner = Learner(id=l_data["id"], name=l_data["name"])
                 db.add(learner)
-                db.flush()
-
-            # Ensure all concepts have an initial ConceptMastery record
-            for c_data in CONCEPTS:
-                mastery = (
-                    db.query(ConceptMastery)
-                    .filter(
-                        ConceptMastery.learner_id == learner.id,
-                        ConceptMastery.concept_id == c_data["id"],
-                    )
-                    .first()
-                )
-                if not mastery:
-                    mastery = ConceptMastery(
-                        learner_id=learner.id,
-                        concept_id=c_data["id"],
-                        p_mastery=c_data["default_p_init"],
-                        p_transit=c_data["default_p_transit"],
-                        p_guess=c_data["default_p_guess"],
-                        p_slip=c_data["default_p_slip"],
-                        leitner_box=1,
-                    )
-                    db.add(mastery)
         db.commit()
-        print(f"[Seed] Seeding complete: {len(CONCEPTS)} concepts, {len(PREREQUISITES)} prerequisites, {len(MISCONCEPTIONS)} misconceptions, {len(QUESTIONS)} questions.")
+
+        print(
+            f"[Seed] Seeding complete: {len(SUBJECTS)} subjects, {len(TOPICS)} topics, "
+            f"{len(CONCEPTS)} concepts, {len(QUESTIONS)} questions."
+        )
 
     finally:
         if close_at_end:
@@ -181,4 +206,3 @@ def seed_database(db: Session = None) -> None:
 
 if __name__ == "__main__":
     seed_database()
-

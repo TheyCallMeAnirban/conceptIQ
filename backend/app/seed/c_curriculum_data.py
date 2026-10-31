@@ -1,12 +1,56 @@
 """
-Curated GATE CSE C Programming (Arrays & Pointers) Curriculum.
-Includes 9 concepts, prerequisite edges forming a DAG, catalog of misconceptions,
-and 22 technically validated questions.
+Universal Academic Curriculum Seed Dataset.
+Includes:
+- Multi-subject hierarchy: Subjects -> Topics -> Concepts.
+- Computer Science (C Programming: Pointers & Arrays) [Full 9 concepts, 22 questions, 8 misconceptions].
+- Mathematics (Calculus) [Demonstration concepts & questions].
+- Physics (Classical Mechanics) [Demonstration concepts & questions].
 """
 
+SUBJECTS = [
+    {
+        "id": "CS",
+        "name": "Computer Science",
+        "description": "Foundations of computing, data structures, algorithms, and systems programming.",
+    },
+    {
+        "id": "MATH",
+        "name": "Mathematics",
+        "description": "Pure and applied mathematics including calculus, linear algebra, and discrete math.",
+    },
+    {
+        "id": "PHYSICS",
+        "name": "Physics",
+        "description": "Classical and modern physics exploring matter, energy, mechanics, and thermodynamics.",
+    },
+]
+
+TOPICS = [
+    {
+        "id": "C_PROGRAMMING",
+        "subject_id": "CS",
+        "name": "C Programming: Pointers & Memory",
+        "description": "Low-level memory representation, pointer mechanics, pointer arithmetic, and multidimensional arrays.",
+    },
+    {
+        "id": "CALCULUS",
+        "subject_id": "MATH",
+        "name": "Single-Variable Calculus",
+        "description": "Limits, continuous functions, derivatives, and integral techniques.",
+    },
+    {
+        "id": "CLASSICAL_MECHANICS",
+        "subject_id": "PHYSICS",
+        "name": "Newtonian Mechanics",
+        "description": "Kinematics, Newton's laws of motion, force vectors, and conservation of momentum.",
+    },
+]
+
 CONCEPTS = [
+    # --- Computer Science: C Programming Concepts (Full Demonstration Set) ---
     {
         "id": "DATA_TYPES_MEM_REP",
+        "topic_id": "C_PROGRAMMING",
         "name": "Data Types & Memory Representation",
         "description": "Sizes of basic types (char, int, float), byte addressability, alignment, and the address-of operator (&).",
         "default_p_init": 0.25,
@@ -16,6 +60,7 @@ CONCEPTS = [
     },
     {
         "id": "ARRAYS_BASIC",
+        "topic_id": "C_PROGRAMMING",
         "name": "Arrays & Contiguous Memory",
         "description": "Definition of arrays, contiguous memory allocation, element count, and storage layout.",
         "default_p_init": 0.25,
@@ -25,6 +70,7 @@ CONCEPTS = [
     },
     {
         "id": "ARRAY_INDEXING",
+        "topic_id": "C_PROGRAMMING",
         "name": "Array Indexing & Bounds",
         "description": "0-based indexing, valid index ranges, absence of runtime bounds checking in C, and buffer overflows.",
         "default_p_init": 0.20,
@@ -34,6 +80,7 @@ CONCEPTS = [
     },
     {
         "id": "POINTER_FUNDAMENTALS",
+        "topic_id": "C_PROGRAMMING",
         "name": "Pointer Fundamentals & Dereferencing",
         "description": "Pointer variable declaration, addresses, dereferencing operator (*), null pointers, and void pointers.",
         "default_p_init": 0.15,
@@ -43,6 +90,7 @@ CONCEPTS = [
     },
     {
         "id": "ARRAY_POINTER_DECAY",
+        "topic_id": "C_PROGRAMMING",
         "name": "Array-to-Pointer Decay",
         "description": "Implicit conversion of an array name to a pointer to its first element in expressions, except in sizeof and &.",
         "default_p_init": 0.10,
@@ -52,6 +100,7 @@ CONCEPTS = [
     },
     {
         "id": "POINTER_ARITHMETIC",
+        "topic_id": "C_PROGRAMMING",
         "name": "Pointer Arithmetic & Scaling",
         "description": "Adding/subtracting integers to pointers, automatic scaling by sizeof(T), and pointer subtraction (ptrdiff_t).",
         "default_p_init": 0.10,
@@ -61,6 +110,7 @@ CONCEPTS = [
     },
     {
         "id": "POINTER_ARRAY_RELATION",
+        "topic_id": "C_PROGRAMMING",
         "name": "Pointer and Array Equivalence & Differences",
         "description": "The rule *(a + i) == a[i] == i[a], lvalue differences (array name is not a modifiable lvalue), function parameters.",
         "default_p_init": 0.10,
@@ -70,6 +120,7 @@ CONCEPTS = [
     },
     {
         "id": "MULTIDIMENSIONAL_ARRAYS",
+        "topic_id": "C_PROGRAMMING",
         "name": "Multidimensional Arrays & Pointer Syntax",
         "description": "2D arrays in row-major order, type of arr[i], pointer to array T (*p)[N], and pointer arithmetic on 2D arrays.",
         "default_p_init": 0.08,
@@ -79,6 +130,7 @@ CONCEPTS = [
     },
     {
         "id": "POINTER_TO_POINTER",
+        "topic_id": "C_PROGRAMMING",
         "name": "Pointer to Pointer (Double Indirection)",
         "description": "Declaration of T**, modifying pointers inside functions, ragged arrays, and command line arguments (argv).",
         "default_p_init": 0.08,
@@ -86,10 +138,55 @@ CONCEPTS = [
         "default_p_guess": 0.20,
         "default_p_slip": 0.15,
     },
+
+    # --- Mathematics: Calculus Concepts (Demonstration Set) ---
+    {
+        "id": "CALCULUS_LIMITS",
+        "topic_id": "CALCULUS",
+        "name": "Limits & Continuity",
+        "description": "Concept of limits, epsilon-delta intuition, continuity, and indeterminate forms.",
+        "default_p_init": 0.25,
+        "default_p_transit": 0.15,
+        "default_p_guess": 0.20,
+        "default_p_slip": 0.10,
+    },
+    {
+        "id": "INTEGRATION_BY_PARTS",
+        "topic_id": "CALCULUS",
+        "name": "Integration by Parts",
+        "description": "Derivation from the product rule: integral(u dv) = uv - integral(v du), and the LIATE rule.",
+        "default_p_init": 0.15,
+        "default_p_transit": 0.12,
+        "default_p_guess": 0.20,
+        "default_p_slip": 0.12,
+    },
+
+    # --- Physics: Classical Mechanics Concepts (Demonstration Set) ---
+    {
+        "id": "NEWTON_FIRST_LAW",
+        "topic_id": "CLASSICAL_MECHANICS",
+        "name": "Newton's First Law (Inertia)",
+        "description": "Inertia, reference frames, and constant velocity in the absence of net external force.",
+        "default_p_init": 0.30,
+        "default_p_transit": 0.15,
+        "default_p_guess": 0.20,
+        "default_p_slip": 0.10,
+    },
+    {
+        "id": "NEWTON_SECOND_LAW",
+        "topic_id": "CLASSICAL_MECHANICS",
+        "name": "Newton's Second Law (F = ma)",
+        "description": "Rate of change of linear momentum, net force vector equation F_net = m*a, and free-body diagrams.",
+        "default_p_init": 0.20,
+        "default_p_transit": 0.15,
+        "default_p_guess": 0.20,
+        "default_p_slip": 0.10,
+    },
 ]
 
 # Prerequisite Edges: (concept_id, prerequisite_id) -> prerequisite must be learned BEFORE concept
 PREREQUISITES = [
+    # CS: C Programming Edges
     ("ARRAYS_BASIC", "DATA_TYPES_MEM_REP"),
     ("ARRAY_INDEXING", "ARRAYS_BASIC"),
     ("POINTER_FUNDAMENTALS", "DATA_TYPES_MEM_REP"),
@@ -102,15 +199,25 @@ PREREQUISITES = [
     ("MULTIDIMENSIONAL_ARRAYS", "POINTER_ARRAY_RELATION"),
     ("POINTER_TO_POINTER", "POINTER_FUNDAMENTALS"),
     ("POINTER_TO_POINTER", "POINTER_ARITHMETIC"),
+
+    # Mathematics: Calculus Edges
+    ("INTEGRATION_BY_PARTS", "CALCULUS_LIMITS"),
+
+    # Physics: Mechanics Edges
+    ("NEWTON_SECOND_LAW", "NEWTON_FIRST_LAW"),
 ]
 
 MISCONCEPTIONS = [
+    # --- Computer Science Misconceptions ---
     {
         "id": "BYTE_INCREMENT_FALLACY",
         "concept_id": "POINTER_ARITHMETIC",
         "name": "Assuming pointer addition increases raw address by 1 byte",
         "description": "Student assumes ptr + 1 simply adds 1 to the numeric memory address regardless of the pointee type.",
         "remediation_hint": "In C, (ptr + 1) scales the memory address by sizeof(*ptr) bytes. If ptr is int* on a 4-byte architecture, ptr + 1 advances the address by 4 bytes.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "ARRAY_NAME_IS_POINTER_VARIABLE",
@@ -118,6 +225,9 @@ MISCONCEPTIONS = [
         "name": "Confusing array name with a modifiable pointer variable",
         "description": "Student believes an array name is a pointer variable stored in memory that can be reassigned (e.g. arr = arr + 1).",
         "remediation_hint": "An array name is a constant reference / non-modifiable lvalue representing the allocated array block. It cannot be assigned to or incremented directly like a pointer variable.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "SIZEOF_ARRAY_EQUALS_POINTER_SIZE",
@@ -125,6 +235,9 @@ MISCONCEPTIONS = [
         "name": "Believing sizeof(array) returns pointer size",
         "description": "Student assumes sizeof(arr) always yields 4 or 8 bytes because 'arrays are just pointers'.",
         "remediation_hint": "When applied directly to an array identifier in the same scope, sizeof(arr) yields total byte size (N * sizeof(element)). Decay does not happen inside sizeof or & operators.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "PRECEDENCE_DEREF_AND_POSTINCREMENT",
@@ -132,6 +245,9 @@ MISCONCEPTIONS = [
         "name": "Confusing precedence between * and ++",
         "description": "Student incorrectly evaluates *ptr++ as (*ptr)++ instead of *(ptr++).",
         "remediation_hint": "Postfix ++ has higher precedence than unary *. Therefore, *ptr++ retrieves the value at the current pointer address and then increments the pointer itself.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "CONFUSING_ARRAY_OF_POINTERS_WITH_POINTER_TO_ARRAY",
@@ -139,6 +255,9 @@ MISCONCEPTIONS = [
         "name": "Confusing int *arr[10] with int (*arr)[10]",
         "description": "Student treats an array of pointers identically to a pointer to an array of integers.",
         "remediation_hint": "Due to operator precedence, [] binds tighter than *. int *arr[10] is an array of 10 integer pointers. int (*arr)[10] is a pointer to an array of 10 integers.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "COMMUTATIVITY_OF_INDEXING_DISBELIEF",
@@ -146,6 +265,9 @@ MISCONCEPTIONS = [
         "name": "Believing i[a] is invalid syntax in C",
         "description": "Student assumes i[a] will throw a compiler error because 'the index must be inside brackets'.",
         "remediation_hint": "Because a[i] is defined precisely by the C standard as *(a + i), and addition is commutative (*(i + a)), i[a] is completely valid and equivalent in C.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "DOUBLE_POINTER_EQUALS_2D_ARRAY",
@@ -153,6 +275,9 @@ MISCONCEPTIONS = [
         "name": "Assuming int** is compatible with int arr[3][3]",
         "description": "Student passes a 2D array directly to a function accepting int** expecting it to work without warnings.",
         "remediation_hint": "A 2D array allocates a single contiguous memory block where rows are stored end-to-end. An int** expects an array of memory addresses. Their memory layouts and dereferencing paths are incompatible.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
     {
         "id": "OUT_OF_BOUNDS_COMPILER_ERROR_BELIEF",
@@ -160,6 +285,33 @@ MISCONCEPTIONS = [
         "name": "Expecting compile-time bounds checking in C",
         "description": "Student expects accessing arr[10] on an array of size 5 to produce a compilation error.",
         "remediation_hint": "C standard does not enforce runtime or compile-time bounds checking on array indexing. Out-of-bounds access invokes Undefined Behavior (UB), often reading arbitrary memory or causing segmentation faults.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
+    },
+
+    # --- Mathematics Misconceptions ---
+    {
+        "id": "INTEGRATION_BY_PARTS_SIGN_ERROR",
+        "concept_id": "INTEGRATION_BY_PARTS",
+        "name": "Inverting the sign in the integration by parts formula",
+        "description": "Student computes integral(u dv) as uv + integral(v du) instead of uv - integral(v du).",
+        "remediation_hint": "Remember the product rule derivative: d(uv) = u dv + v du. Rearranging to isolate u dv yields u dv = d(uv) - v du, hence the minus sign.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
+    },
+
+    # --- Physics Misconceptions ---
+    {
+        "id": "FORCE_REQUIRED_TO_MAINTAIN_MOTION",
+        "concept_id": "NEWTON_FIRST_LAW",
+        "name": "Believing a continuous net force is necessary to keep an object moving",
+        "description": "Student believes that if an object is moving at constant velocity in deep space, a constant propulsion force must continuously act on it.",
+        "remediation_hint": "According to Newton's First Law, an object in motion continues at constant velocity unless acted upon by a NET external force. Zero net force means zero acceleration, not zero velocity.",
+        "source": "CURATED",
+        "validation_status": "CONFIRMED",
+        "confidence": 1.0,
     },
 ]
 
@@ -181,6 +333,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "sizeof(x) evaluates to the size of the int variable which is 4 bytes. &x is the address of x, whose type is int*. On a 64-bit machine, all pointer types are 8 bytes. Hence, 4 8.",
         "difficulty": 0.2,
+        "secondary_concept_ids": [],
         "known_misconceptions": []
     },
     # 2. DATA_TYPES_MEM_REP - Medium
@@ -240,6 +393,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "In C, arrays are 0-indexed. An array of length 10 has valid indices from 0 to 9. nums[10] is one past the end and accessing it yields undefined behavior.",
         "difficulty": 0.2,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["OUT_OF_BOUNDS_COMPILER_ERROR_BELIEF"]
     },
     # 5. ARRAY_INDEXING - Medium
@@ -259,6 +413,7 @@ QUESTIONS = [
         "correct_answer": "C",
         "canonical_explanation": "The C standard specifies no runtime bounds checks for array access. Indexing past the valid bounds causes Undefined Behavior (UB).",
         "difficulty": 0.4,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["OUT_OF_BOUNDS_COMPILER_ERROR_BELIEF"]
     },
     # 6. POINTER_FUNDAMENTALS - Easy
@@ -278,6 +433,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "p holds the address of a. The dereference *p accesses the memory location of a. Assigning *p = 99 modifies the value of a directly to 99.",
         "difficulty": 0.2,
+        "secondary_concept_ids": [],
         "known_misconceptions": []
     },
     # 7. POINTER_FUNDAMENTALS - Hard
@@ -297,6 +453,7 @@ QUESTIONS = [
         "correct_answer": "A",
         "canonical_explanation": "Postfix ++ has higher precedence than *. So *p++ evaluates as *(p++). The value of expression p++ is the original pointer p, so *p yields 10 (stored in val). Side effect increments p to point to the next element (20). So *p is now 20.",
         "difficulty": 0.7,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["PRECEDENCE_DEREF_AND_POSTINCREMENT"]
     },
     # 8. ARRAY_POINTER_DECAY - Easy
@@ -316,6 +473,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "In C, in almost all expression contexts (except operand to sizeof and unary &), an array expression decays into a pointer to its first element.",
         "difficulty": 0.3,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["ARRAY_NAME_IS_POINTER_VARIABLE"]
     },
     # 9. ARRAY_POINTER_DECAY - Medium
@@ -375,6 +533,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "Pointer arithmetic scales by sizeof(*ptr). Here, 0x3000 + 2 * sizeof(int) = 0x3000 + 2 * 4 = 0x3008.",
         "difficulty": 0.3,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["BYTE_INCREMENT_FALLACY"]
     },
     # 12. POINTER_ARITHMETIC - Medium
@@ -394,6 +553,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "Subtracting two pointers to elements of the same array yields the number of elements between them (ptrdiff_t), NOT the raw byte difference. Index 4 - index 1 = 3.",
         "difficulty": 0.5,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["BYTE_INCREMENT_FALLACY"]
     },
     # 13. POINTER_ARITHMETIC - Hard
@@ -433,6 +593,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "The subscript operator [] is defined so that E1[E2] is identical to (*((E1)+(E2))). Hence arr[3] == *(arr + 3).",
         "difficulty": 0.25,
+        "secondary_concept_ids": [],
         "known_misconceptions": []
     },
     # 15. POINTER_ARRAY_RELATION - Medium
@@ -452,6 +613,7 @@ QUESTIONS = [
         "correct_answer": "C",
         "canonical_explanation": "2[arr] expands to *(2 + arr). By commutativity of addition, *(2 + arr) == *(arr + 2) == arr[2]. arr[2] is 300.",
         "difficulty": 0.55,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["COMMUTATIVITY_OF_INDEXING_DISBELIEF"]
     },
     # 16. POINTER_ARRAY_RELATION - Hard
@@ -491,6 +653,7 @@ QUESTIONS = [
         "correct_answer": "A",
         "canonical_explanation": "In row-major order: Address(arr[i][j]) = Base + (i * cols + j) * sizeof(element). Here: 1000 + (2 * 4 + 1) * 4 = 1000 + 9 * 4 = 1036.",
         "difficulty": 0.5,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["CONFUSING_ARRAY_OF_POINTERS_WITH_POINTER_TO_ARRAY"]
     },
     # 18. MULTIDIMENSIONAL_ARRAYS - Hard
@@ -530,6 +693,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "*(*(a + 1) + 2) is the exact pointer translation of a[1][2]. Row 1 is {4, 5, 6}, and index 2 of that row is 6.",
         "difficulty": 0.7,
+        "secondary_concept_ids": [],
         "known_misconceptions": []
     },
     # 20. POINTER_TO_POINTER - Medium
@@ -549,6 +713,7 @@ QUESTIONS = [
         "correct_answer": "B",
         "canonical_explanation": "pp points to p, and p points to x. Dereferencing twice (**pp) directly modifies x to 100. Since p still points to x, *p also reads 100.",
         "difficulty": 0.45,
+        "secondary_concept_ids": [],
         "known_misconceptions": []
     },
     # 21. POINTER_TO_POINTER - Hard
@@ -568,6 +733,7 @@ QUESTIONS = [
         "correct_answer": "C",
         "canonical_explanation": "In C, all arguments are passed by value. To modify an object in the caller, you must pass a pointer to that object. To modify a pointer (T*), you must pass a pointer to that pointer (T**).",
         "difficulty": 0.7,
+        "secondary_concept_ids": [],
         "known_misconceptions": ["DOUBLE_POINTER_EQUALS_2D_ARRAY"]
     },
     # 22. POINTER_TO_POINTER - Hard
@@ -589,6 +755,47 @@ QUESTIONS = [
         "difficulty": 0.85,
         "secondary_concept_ids": ["MULTIDIMENSIONAL_ARRAYS"],
         "known_misconceptions": ["DOUBLE_POINTER_EQUALS_2D_ARRAY"]
+    },
+
+    # --- Mathematics Demonstration Question ---
+    {
+        "id": "Q_MATH_INT_01",
+        "concept_id": "INTEGRATION_BY_PARTS",
+        "title": "Integration by Parts Formula",
+        "problem_text": "According to the integration by parts rule derived from the product rule of differentiation, what does integral(u dv) equal?",
+        "code_snippet": None,
+        "question_type": "MCQ",
+        "options": [
+            {"id": "A", "text": "uv + integral(v du)"},
+            {"id": "B", "text": "uv - integral(v du)"},
+            {"id": "C", "text": "u' v - v' u"},
+            {"id": "D", "text": "integral(u) * integral(v)"}
+        ],
+        "correct_answer": "B",
+        "canonical_explanation": "From d(uv) = u dv + v du, integrating both sides gives uv = integral(u dv) + integral(v du). Rearranging yields integral(u dv) = uv - integral(v du).",
+        "difficulty": 0.35,
+        "secondary_concept_ids": [],
+        "known_misconceptions": ["INTEGRATION_BY_PARTS_SIGN_ERROR"]
+    },
+
+    # --- Physics Demonstration Question ---
+    {
+        "id": "Q_PHYS_NEWTON_01",
+        "concept_id": "NEWTON_FIRST_LAW",
+        "title": "Motion in the Absence of Net Force",
+        "problem_text": "An astronaut in deep space throws a wrench away from the spacecraft where gravitational forces are negligible. What happens to the wrench's motion after it leaves the astronaut's hand?",
+        "code_snippet": None,
+        "question_type": "MCQ",
+        "options": [
+            {"id": "A", "text": "It gradually slows down and eventually stops because force is required to keep it moving."},
+            {"id": "B", "text": "It continues moving at constant velocity in a straight line indefinitely."},
+            {"id": "C", "text": "It accelerates continuously away from the spacecraft."},
+            {"id": "D", "text": "It immediately drops straight down."}
+        ],
+        "correct_answer": "B",
+        "canonical_explanation": "By Newton's First Law of Motion, an object in motion remains in uniform motion at constant velocity unless acted upon by a net external force. In deep space with negligible external force, it continues at constant velocity.",
+        "difficulty": 0.25,
+        "secondary_concept_ids": [],
+        "known_misconceptions": ["FORCE_REQUIRED_TO_MAINTAIN_MOTION"]
     }
 ]
-

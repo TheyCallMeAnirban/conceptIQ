@@ -5,12 +5,14 @@ from backend.app.core.database import engine, Base
 from backend.app.api.v1.router import api_router
 from backend.app.seed.seed_db import seed_database
 
-# Create tables and seed initial curriculum on startup
-Base.metadata.create_all(bind=engine)
+from backend.app.core.migration import run_schema_upgrade
+
+# Create tables, apply schema migrations, and seed curriculum on startup
 try:
+    run_schema_upgrade(engine)
     seed_database()
 except Exception as e:
-    print(f"[Startup] DB seeding skipped or completed: {e}")
+    print(f"[Startup] DB migration/seeding completed or handled: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

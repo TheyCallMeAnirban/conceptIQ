@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime, Enum, JSON
+    Column, String, Integer, Float, Boolean, Text, ForeignKey, DateTime, JSON, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from backend.app.core.database import Base
@@ -15,13 +15,38 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Subject(Base):
+    __tablename__ = "subjects"
+
+    id = Column(String(64), primary_key=True)  # e.g., 'CS', 'MATH', 'PHYSICS'
+    name = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    topics = relationship("Topic", back_populates="subject", cascade="all, delete-orphan")
+
+
+class Topic(Base):
+    __tablename__ = "topics"
+
+    id = Column(String(64), primary_key=True)  # e.g., 'C_PROGRAMMING', 'CALCULUS', 'MECHANICS'
+    subject_id = Column(String(64), ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    subject = relationship("Subject", back_populates="topics")
+    concepts = relationship("Concept", back_populates="topic", cascade="all, delete-orphan")
+
+
 class Concept(Base):
     __tablename__ = "concepts"
 
     id = Column(String(64), primary_key=True)  # e.g., 'POINTER_ARITHMETIC'
+    topic_id = Column(String(64), ForeignKey("topics.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(128), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(String(64), default="C_POINTERS_ARRAYS")
+    category = Column(String(64), default="GENERAL")
     
     # Default BKT parameters for this concept
     default_p_init = Column(Float, default=0.20)      # P(L_0)
@@ -30,6 +55,7 @@ class Concept(Base):
     default_p_slip = Column(Float, default=0.10)      # P(S)
 
     # Relationships
+    topic = relationship("Topic", back_populates="concepts")
     prerequisites = relationship(
         "ConceptPrerequisite",
         foreign_keys="ConceptPrerequisite.concept_id",
@@ -60,11 +86,18 @@ class ConceptPrerequisite(Base):
 class Misconception(Base):
     __tablename__ = "misconceptions"
 
-    id = Column(String(64), primary_key=True)  # e.g., 'CONFUSING_ARRAY_NAME_WITH_POINTER_VARIABLE'
+    id = Column(String(64), primary_key=True)  # e.g., 'BYTE_INCREMENT_FALLACY'
     concept_id = Column(String(64), ForeignKey("concepts.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     remediation_hint = Column(Text, nullable=False)
+
+    # Universal & Dynamic Misconception Attributes
+    source = Column(String(32), default="CURATED")                      # CURATED or LLM_DISCOVERED
+    confidence = Column(Float, default=1.0)                             # 0.0 - 1.0
+    validation_status = Column(String(32), default="CONFIRMED")         # CANDIDATE, CONFIRMED, REJECTED
+    evidence_count = Column(Integer, default=1)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class Question(Base):
@@ -99,6 +132,9 @@ class Learner(Base):
 
 class ConceptMastery(Base):
     __tablename__ = "concept_masteries"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "concept_id", name="uq_learner_concept"),
+    )
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     learner_id = Column(String(64), ForeignKey("learners.id", ondelete="CASCADE"), nullable=False)
@@ -115,6 +151,14 @@ class ConceptMastery(Base):
     consecutive_correct = Column(Integer, default=0)
     last_reviewed_at = Column(DateTime, nullable=True)
     next_review_due = Column(DateTime, nullable=True)
+
+    # 3-Tier Assessment State (Lazy initialization support)
+    # UNASSESSED: Learner has not been formally assessed on this concept.
+    # IN_PROGRESS: Assessment initiated (1-2 observations), learning underway.
+    # ASSESSED: Calibrated mastery backed by formal assessment evidence.
+    assessment_state = Column(String(32), default="UNASSESSED")
+    formal_attempt_count = Column(Integer, default=0)
+    last_assessed_at = Column(DateTime, nullable=True)
 
     learner = relationship("Learner", back_populates="masteries")
     concept = relationship("Concept", back_populates="masteries")
@@ -148,19 +192,19 @@ class QuestionAttempt(Base):
 
     # Student submission
     student_answer = Column(String(255), nullable=False)
-    reasoning_transcript = Column(Text, nullable=False)  # Wispr Flow text
+    reasoning_transcript = Column(Text, nullable=False)  # Voice/Dictated reasoning
 
     # Evaluation
     is_correct = Column(Boolean, nullable=False)
 
     # Diagnostic Signal (LLM evaluation, strictly separated from BKT)
-    reasoning_quality = Column(String(32), nullable=True)      # e.g., SOUND, PARTIALLY_CORRECT, FLAWED, GUESS
+    reasoning_quality = Column(String(32), nullable=True)      # SOUND, PARTIALLY_CORRECT, FLAWED, GUESS, INSUFFICIENT_EVIDENCE
     detected_misconceptions = Column(JSON, default=list)       # list of misconception IDs
     evidence = Column(Text, nullable=True)
     recommended_intervention = Column(Text, nullable=True)
     diagnosis_provider = Column(String(32), default="deterministic_fallback") # 'llm' or 'deterministic_fallback'
 
-    # Deterministic BKT Audit Record (Strict adherence to requirement C)
+    # Deterministic BKT Audit Record
     p_mastery_prior = Column(Float, nullable=False)
     p_mastery_posterior = Column(Float, nullable=False)
     p_transit_used = Column(Float, nullable=False)
@@ -172,4 +216,3 @@ class QuestionAttempt(Base):
     session = relationship("AssessmentSession", back_populates="attempts")
     question = relationship("Question")
     concept = relationship("Concept")
-

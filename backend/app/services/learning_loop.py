@@ -128,7 +128,7 @@ class LearningLoopService:
             .first()
         )
         if not mastery_record:
-            # Initialize if not present
+            # Initialize lazily on first formal assessment interaction
             mastery_record = ConceptMastery(
                 learner_id=submission.learner_id,
                 concept_id=concept.id,
@@ -137,6 +137,8 @@ class LearningLoopService:
                 p_guess=concept.default_p_guess,
                 p_slip=concept.default_p_slip,
                 leitner_box=1,
+                assessment_state="IN_PROGRESS",
+                formal_attempt_count=0,
             )
             self.db.add(mastery_record)
             self.db.flush()
@@ -159,10 +161,17 @@ class LearningLoopService:
             now=eval_time,
         )
 
-        # 6. Apply State Mutations
+        # 8. Apply State Mutations & Progress Assessment State
         mastery_record.p_mastery = bkt_res.posterior
         mastery_record.leitner_box = leitner_res.new_box
         mastery_record.consecutive_correct = leitner_res.consecutive_correct
+        mastery_record.last_reviewed_at = leitner_res.last_reviewed_at
+        mastery_record.next_review_due = leitner_res.next_review_due
+        
+        # Advance assessment state (UNASSESSED -> IN_PROGRESS -> ASSESSED)
+        mastery_record.formal_attempt_count = (mastery_record.formal_attempt_count or 0) + 1
+        mastery_record.last_assessed_at = eval_time
+        mastery_record.assessment_state = "ASSESSED" if mastery_record.formal_attempt_count >= 2 else "IN_PROGRESS"
         mastery_record.last_reviewed_at = leitner_res.last_reviewed_at
         mastery_record.next_review_due = leitner_res.next_review_due
 

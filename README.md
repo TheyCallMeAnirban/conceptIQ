@@ -232,3 +232,4 @@ conceptIQ/
 1. **Deterministic Authority**: The LLM's diagnosis never dictates mathematical mastery or whether an answer is marked correct.
 2. **Transaction Atomicity**: Attempt persistence, BKT state deltas, Leitner box transitions, and session state are executed in a single atomic database transaction with full rollback protection.
 3. **Graceful Degradation**: If external AI APIs time out or credentials are missing, the system automatically falls back to deterministic analysis, labelling its output explicitly as `deterministic_fallback`.
+
