@@ -1,0 +1,8 @@
+{
+  "name": "Radial HUD Cyber-Physical Tutor",
+  "description": "Tactical aerospace HUD telemetry console and adaptive cyber-physical tutor featuring orbital concentric dials, cognitive vector mapping, and interactive problem scaffolding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

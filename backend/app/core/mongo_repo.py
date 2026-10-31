@@ -181,3 +181,4 @@ class MongoRepository:
     def get_attempts_for_learner(self, learner_id: str) -> List[MongoEntity]:
         docs = list(self.db.question_attempts.find({"learner_id": learner_id}, {"_id": 0}).sort("created_at", 1))
         return [MongoEntity(d) for d in docs]
+

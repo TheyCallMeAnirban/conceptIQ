@@ -41,3 +41,4 @@ def init_indexes():
     db.question_attempts.create_index("id", unique=True)
     db.question_attempts.create_index([("session_id", 1), ("question_id", 1)], unique=True)
     db.question_attempts.create_index("learner_id")
+
