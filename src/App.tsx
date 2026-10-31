@@ -96,24 +96,34 @@ export default function App() {
         onChunk: (chunk) => {
           setHudStatus('RESPONDING');
           setConversationHistory((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') {
-              last.text += chunk;
+            if (prev.length === 0) return prev;
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            const currentItem = updated[lastIdx];
+            if (currentItem && currentItem.role === 'assistant') {
+              updated[lastIdx] = {
+                ...currentItem,
+                text: (currentItem.text || '') + chunk,
+              };
             }
-            return copy;
+            return updated;
           });
         },
         onComplete: (data) => {
           setIsLoading(false);
           setHudStatus('IDLE');
           setConversationHistory((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.role === 'assistant') {
-              last.provider = data.provider;
+            if (prev.length === 0) return prev;
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            const currentItem = updated[lastIdx];
+            if (currentItem && currentItem.role === 'assistant') {
+              updated[lastIdx] = {
+                ...currentItem,
+                provider: data.provider,
+              };
             }
-            return copy;
+            return updated;
           });
         },
         onError: (err) => {

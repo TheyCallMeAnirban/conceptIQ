@@ -202,6 +202,7 @@ export const api = {
             const trimmed = line.trim();
             if (trimmed.startsWith('data:')) {
               const jsonStr = trimmed.slice(5).trim();
+              if (!jsonStr) continue;
               try {
                 const event = JSON.parse(jsonStr);
                 if (event.type === 'start' && callbacks.onStart) {
@@ -212,7 +213,8 @@ export const api = {
                   callbacks.onComplete(event);
                 }
               } catch (e) {
-                // Incomplete JSON line in chunk
+                // If incomplete JSON across chunks, push back into buffer
+                buffer = line + '\n' + buffer;
               }
             }
           }
