@@ -6,8 +6,12 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "ConceptIQ"
     API_V1_STR: str = "/api/v1"
     
-    # SQLite with WAL mode by default
+    # SQLite fallback
     DATABASE_URL: str = "sqlite:///./conceptiq.db"
+    
+    # MongoDB Configuration
+    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "conceptiq"
     
     # LLM Settings (for Phase 2, strictly optional in Phase 1)
     OPENAI_API_KEY: Optional[str] = None

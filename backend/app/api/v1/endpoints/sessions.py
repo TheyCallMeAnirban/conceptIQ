@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Any
+import uuid
 
 from backend.app.core.database import get_db
-from backend.app.models import AssessmentSession, Learner, Question
+from backend.app.core.mongo_repo import MongoRepository
 from backend.app.domain.schemas.session import AttemptSubmission, AttemptResult
 from backend.app.domain.schemas.selection import QuestionRecommendation
 from backend.app.services.learning_loop import LearningLoopService
@@ -16,6 +16,7 @@ router = APIRouter()
 class StartSessionRequest(BaseModel):
     learner_id: str
     target_subject: Optional[str] = "C_POINTERS_ARRAYS"
+    force_new: Optional[bool] = False
 
 
 class StartSessionResponse(BaseModel):
@@ -26,13 +27,62 @@ class StartSessionResponse(BaseModel):
 
 
 @router.post("/start", response_model=StartSessionResponse, summary="Start or resume an assessment session")
-def start_session(payload: StartSessionRequest, db: Session = Depends(get_db)):
+def start_session(payload: StartSessionRequest, db: Any = Depends(get_db)):
+    # Support MongoRepository as well as legacy SQLAlchemy session
+    is_mongo = isinstance(db, MongoRepository)
+    if is_mongo:
+        learner = db.get_learner(payload.learner_id)
+        if not learner:
+            raise HTTPException(status_code=404, detail=f"Learner {payload.learner_id} not found")
+
+        active_session = None if payload.force_new else db.get_active_session(payload.learner_id)
+        selector = QuestionSelector(db)
+
+        if active_session:
+            rec = None
+            if active_session.current_question_id:
+                rec = selector.select_next_question(
+                    learner_id=payload.learner_id,
+                    session_attempted_qids=db.get_session_attempted_qids(active_session.id),
+                )
+            return StartSessionResponse(
+                session_id=active_session.id,
+                learner_id=active_session.learner_id,
+                status=active_session.status,
+                current_question=rec,
+            )
+
+        # Create brand new session
+        first_q_rec = selector.select_next_question(
+            learner_id=payload.learner_id,
+            session_attempted_qids=[],
+        )
+        if not first_q_rec:
+            raise HTTPException(status_code=500, detail="No eligible questions found in curriculum bank")
+
+        new_session_id = str(uuid.uuid4())
+        new_session = db.save_session({
+            "id": new_session_id,
+            "learner_id": payload.learner_id,
+            "current_question_id": first_q_rec.question_id,
+            "status": "ACTIVE",
+            "attempt_count": 0,
+        })
+
+        return StartSessionResponse(
+            session_id=new_session.id,
+            learner_id=new_session.learner_id,
+            status=new_session.status,
+            current_question=first_q_rec,
+        )
+
+    # Legacy SQLAlchemy fallback
+    from backend.app.models import AssessmentSession, Learner, Question
     learner = db.query(Learner).filter(Learner.id == payload.learner_id).first()
     if not learner:
         raise HTTPException(status_code=404, detail=f"Learner {payload.learner_id} not found")
 
-    # Check for existing active session to resume
-    active_session = (
+    active_session = None if payload.force_new else (
         db.query(AssessmentSession)
         .filter(
             AssessmentSession.learner_id == payload.learner_id,
@@ -44,17 +94,12 @@ def start_session(payload: StartSessionRequest, db: Session = Depends(get_db)):
     selector = QuestionSelector(db)
 
     if active_session:
-        # Resume active session
         rec = None
         if active_session.current_question_id:
-            q = db.query(Question).filter(Question.id == active_session.current_question_id).first()
-            if q:
-                c = q.concept
-                # Fetch rationale for current question
-                rec = selector.select_next_question(
-                    learner_id=payload.learner_id,
-                    session_attempted_qids=[],
-                )
+            rec = selector.select_next_question(
+                learner_id=payload.learner_id,
+                session_attempted_qids=[],
+            )
         return StartSessionResponse(
             session_id=active_session.id,
             learner_id=active_session.learner_id,
@@ -62,7 +107,6 @@ def start_session(payload: StartSessionRequest, db: Session = Depends(get_db)):
             current_question=rec,
         )
 
-    # Create new session
     first_q_rec = selector.select_next_question(
         learner_id=payload.learner_id,
         session_attempted_qids=[],
@@ -88,7 +132,7 @@ def start_session(payload: StartSessionRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/submit", response_model=AttemptResult, summary="Submit student answer and voice reasoning transcript")
-def submit_attempt(submission: AttemptSubmission, db: Session = Depends(get_db)):
+def submit_attempt(submission: AttemptSubmission, db: Any = Depends(get_db)):
     service = LearningLoopService(db)
     try:
         return service.process_attempt(submission)

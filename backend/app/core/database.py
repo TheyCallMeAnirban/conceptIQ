@@ -27,9 +27,7 @@ Base = declarative_base()
 
 
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    from backend.app.core.mongo_repo import MongoRepository
+    # Defaults to MongoRepository for MongoDB backend
+    yield MongoRepository()
 

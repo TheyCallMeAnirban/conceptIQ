@@ -5,14 +5,15 @@ from backend.app.core.database import engine, Base
 from backend.app.api.v1.router import api_router
 from backend.app.seed.seed_db import seed_database
 
-from backend.app.core.migration import run_schema_upgrade
+from backend.app.core.mongo import init_indexes
+from backend.app.seed.seed_mongo import seed_mongo
 
-# Create tables, apply schema migrations, and seed curriculum on startup
+# Initialize indexes and seed MongoDB on startup
 try:
-    run_schema_upgrade(engine)
-    seed_database()
+    init_indexes()
+    seed_mongo()
 except Exception as e:
-    print(f"[Startup] DB migration/seeding completed or handled: {e}")
+    print(f"[Startup] Mongo initialization/seeding warning: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
