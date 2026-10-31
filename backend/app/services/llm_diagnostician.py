@@ -144,9 +144,7 @@ JSON Schema format:
         return clean.strip()
 
     def _call_gemini(self, inp: DiagnosticInput) -> DiagnosticOutput:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_api_key}"
         prompt = self._build_prompt(inp)
-
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
@@ -155,16 +153,30 @@ JSON Schema format:
             },
         }
 
-        with httpx.Client(timeout=self.timeout) as client:
-            resp = client.post(url, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
-            cleaned = self._clean_json_response(raw_text)
-            parsed = json.loads(cleaned)
-            parsed["diagnosis_provider"] = "gemini"
-            parsed["is_correct"] = inp.is_correct
-            return DiagnosticOutput.model_validate(parsed)
+        last_error = None
+        for model_name in [
+            "gemini-flash-lite-latest",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-flash-latest",
+        ]:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.gemini_api_key}"
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    resp = client.post(url, json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    cleaned = self._clean_json_response(raw_text)
+                    parsed = json.loads(cleaned)
+                    parsed["is_correct"] = inp.is_correct
+                    parsed["diagnosis_provider"] = "gemini"
+                    return DiagnosticOutput.model_validate(parsed)
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Diagnostician call to {model_name} failed: {e}")
+
+        raise last_error or RuntimeError("Gemini models failed")
 
     def _call_openai(self, inp: DiagnosticInput) -> DiagnosticOutput:
         url = "https://api.openai.com/v1/chat/completions"

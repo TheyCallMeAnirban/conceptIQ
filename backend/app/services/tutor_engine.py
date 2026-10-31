@@ -53,35 +53,41 @@ class UniversalTutorService:
             user_prompt += f"Target Concept: {req.concept_id}\n"
 
         if settings.LLM_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
-            try:
-                import urllib.request
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.GEMINI_API_KEY}"
-                payload = {
-                    "contents": [
-                        {"role": "user", "parts": [{"text": f"{system_instruction}\n\n{user_prompt}"}]}
-                    ],
-                    "generationConfig": {
-                        "temperature": 0.3,
-                        "maxOutputTokens": 1024,
+            for model_name in [
+                "gemini-flash-lite-latest",
+                "gemini-2.5-flash-lite",
+                "gemini-2.5-flash",
+                "gemini-flash-latest",
+            ]:
+                try:
+                    import urllib.request
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+                    payload = {
+                        "contents": [
+                            {"role": "user", "parts": [{"text": f"{system_instruction}\n\n{user_prompt}"}]}
+                        ],
+                        "generationConfig": {
+                            "temperature": 0.3,
+                            "maxOutputTokens": 1024,
+                        }
                     }
-                }
-                req_obj = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with urllib.request.urlopen(req_obj, timeout=12) as response:
-                    raw_res = json.loads(response.read().decode("utf-8"))
-                    text = raw_res["candidates"][0]["content"]["parts"][0]["text"]
-                    return TutorResponse(
-                        mode=req.mode,
-                        reply=text,
-                        concept_id=req.concept_id,
-                        provider="gemini",
+                    req_obj = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
                     )
-            except Exception as e:
-                logger.warning(f"Tutor Gemini call failed ({e}), falling back to deterministic explanation.")
+                    with urllib.request.urlopen(req_obj, timeout=12) as response:
+                        raw_res = json.loads(response.read().decode("utf-8"))
+                        text = raw_res["candidates"][0]["content"]["parts"][0]["text"]
+                        return TutorResponse(
+                            mode=req.mode,
+                            reply=text,
+                            concept_id=req.concept_id,
+                            provider=f"gemini ({model_name})",
+                        )
+                except Exception as e:
+                    logger.warning(f"Tutor call to {model_name} failed ({e}), checking next.")
 
         # Fallback explanation
         fallback_reply = (
